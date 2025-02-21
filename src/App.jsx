@@ -6,7 +6,16 @@ function App() {
     const [lightMode, setLightMode] = useState(false);
     const [isOpen, setIsOpen] = useState(false);
     const [chosenLanguage, setChosenLanguage] = useState('en');
-    const [conversations, setConversations] = useState([]);
+    const [conversations, setConversations] = useState([
+      {
+        text : "So i have instructions, you would have to choose the language you intend to translate to from the drop down list before sending your message",
+        languageDetected: "Many Many",
+        translation: "joor no vex, i know its a bit of a hassle but its so you can have multiple texts with different translations for different languages at your disposal....Enjoy 🤕 ",
+        translated: true,
+        isSummary: false,
+        needsSummary: false,
+      }
+    ]);
     const [errorMessage, setErrorMessage] = useState('');
     const [isSending, setIsSending] = useState(false);
     const [summarizingIndex, setSummarizingIndex] = useState(null);
@@ -181,7 +190,6 @@ function App() {
                 return;
             }
 
-
             setTranslator(newTranslator);
             const translatedText = await newTranslator.translate(conversationsCopy[index].text);
 
@@ -205,10 +213,7 @@ function App() {
                     <FaSun className="light-dark-mode" onClick={() => setLightMode(!lightMode)} />
                 )}
             </section>
-
-            {errorMessage && <div className="error-message">{errorMessage}</div>}
-
-            <section className="display" ref={displayRef} style={{ overflowY: 'auto', maxHeight: '400px', scrollBehavior: 'smooth' }}>
+            <section className="display" ref={displayRef}>
                 {conversations.map((item, index) => (
                     <div key={index} className="conversation">
                         <h5>{item.text}</h5>
@@ -265,4 +270,3 @@ function App() {
 }
 
 export default App;
-
