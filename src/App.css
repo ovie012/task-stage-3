@@ -93,6 +93,7 @@ textarea {
   z-index: 0;
   overflow-y: scroll;
   scrollbar-width: none;
+  scroll-behavior: smooth;
 }
 
 .conversation {

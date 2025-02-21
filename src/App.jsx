@@ -1,9 +1,11 @@
+
+
+
 import React, { useState, useRef, useEffect } from 'react';
 import { FaSun, FaMoon, FaPaperPlane, FaChevronDown, FaChevronUp } from "react-icons/fa";
 import './App.css';
 
 function App() {
-
   const [lightMode, setLightMode] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [chosenLanguage, setChosenLanguage] = useState('en');
@@ -12,6 +14,8 @@ function App() {
   const [isSending, setIsSending] = useState(false);
   const [summarizingIndex, setSummarizingIndex] = useState(null);
   const [translatingIndex, setTranslatingIndex] = useState(null);
+  const [languageDetector, setLanguageDetector] = useState(null);
+  const [translator, setTranslator] = useState(null);
 
   const textField = useRef(null);
   const displayRef = useRef(null);
@@ -31,7 +35,26 @@ function App() {
     }
   }, [conversations]);
 
-  
+  useEffect(() => {
+    async function initializeAI() {
+      try {
+        const detector = await self.ai.languageDetector.create();
+        setLanguageDetector(detector);
+
+        const translatorInstance = await self.ai.translator.create({
+          sourceLanguage: 'en',
+          targetLanguage: chosenLanguage,
+        });
+        setTranslator(translatorInstance);
+      } catch (error) {
+        console.error("Error initializing AI:", error);
+        setErrorMessage(error.message);
+      }
+    }
+
+    initializeAI();
+  }, [chosenLanguage]);
+
   const callChromeAI = async (apiCall, text, options = {}) => {
     setErrorMessage('');
     try {
@@ -44,20 +67,52 @@ function App() {
   };
 
   const detectLanguage = async (text) => {
-    const result = await callChromeAI(chrome.ai.languageDetection.detectLanguage, text);
-    return result ? result.language : 'unknown';
+    if (!languageDetector) {
+      setErrorMessage("Language detector not initialized.");
+      return 'unknown';
+    }
+
+    try {
+      const detectionResults = await languageDetector.detect(text);
+      if (detectionResults && detectionResults.length > 0) {
+        return detectionResults[0].detectedLanguage;
+      } else {
+        setErrorMessage("Language detection failed.");
+        return 'unknown';
+      }
+    } catch (error) {
+      console.error("Error detecting language:", error);
+      setErrorMessage(error.message);
+      return 'unknown';
+    }
   };
 
   const summarizeText = async (text) => {
-    const result = await callChromeAI(chrome.ai.summarizer.summarize, text);
-    return result ? result.summary : text;
+    try {
+      const result = await self.ai.summarizer.summarize(text);
+      return result ? result.summary : text;
+    } catch (error) {
+      console.error("Error summarizing text:", error);
+      setErrorMessage(error.message);
+      return text;
+    }
   };
 
   const translateText = async (text, targetLanguage) => {
-    const result = await callChromeAI(chrome.ai.translator.translate, text, { targetLanguage });
-    return result ? result.translation : text;
-  };
+    if (!translator) {
+      setErrorMessage("Translator not initialized.");
+      return text;
+    }
 
+    try {
+      const result = await self.ai.translator.translate(text, { targetLanguage: targetLanguage });
+      return result ? result.translation : text;
+    } catch (error) {
+      console.error("Error translating text:", error);
+      setErrorMessage(error.message);
+      return text;
+    }
+  };
 
   const handleSend = async () => {
     if (!textField.current || !textField.current.value) return;
@@ -79,14 +134,15 @@ function App() {
     setConversations(prevConversations => [...prevConversations, initialConversation]);
 
     try {
-      const detectedLanguage = await detectLanguage(text);
+      const detectedLanguageCode = await detectLanguage(text);
+      const detectedLanguage = languages.find(lang => lang.code === detectedLanguageCode)?.name || "Unknown";
 
       setConversations(prevConversations => {
         const updatedConversations = [...prevConversations];
         updatedConversations[updatedConversations.length - 1] = {
           ...updatedConversations[updatedConversations.length - 1],
           languageDetected: detectedLanguage,
-          needsSummary: text.length > 150 && detectedLanguage.toLowerCase() === 'en'
+          needsSummary: text.length > 150 && detectedLanguageCode.toLowerCase() === 'en'
         };
         return updatedConversations;
       });
@@ -113,7 +169,7 @@ function App() {
 
 
   const handleTranslateMessage = async (index) => {
-    setTranslatingIndex(index); 
+    setTranslatingIndex(index);
     try {
       const conversationsCopy = [...conversations];
       const translatedText = await translateText(conversationsCopy[index].text, chosenLanguage);
@@ -122,7 +178,7 @@ function App() {
         setConversations(conversationsCopy);
       }
     } finally {
-      setTranslatingIndex(null); 
+      setTranslatingIndex(null);
     }
   };
 
@@ -185,16 +241,15 @@ function App() {
             </section>
           </div>
         </div>
-        <div className="form">
-          <textarea ref={textField} placeholder="Oya Oya, Lets hear it..." />
-          <button onClick={handleSend} disabled={isSending}>
-            <FaPaperPlane size={30} className="plane" />
-          </button>
-        </div>
+          <div className="form">
+              <textarea ref={textField} placeholder="Oya Oya, Lets hear it..." />
+              <button onClick={handleSend} disabled={isSending}>
+                  <FaPaperPlane size={30} className="plane" />
+              </button>
+          </div>
       </section>
     </div>
   );
 }
 
 export default App;
-
