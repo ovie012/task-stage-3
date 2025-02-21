@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { FaSun, FaMoon, FaPaperPlane, FaChevronDown, FaChevronUp } from "react-icons/fa";
 import './App.css';
@@ -14,6 +13,7 @@ function App() {
     const [translatingIndex, setTranslatingIndex] = useState(null);
     const [languageDetector, setLanguageDetector] = useState(null);
     const [translator, setTranslator] = useState(null);
+    const [summarizer, setSummarizer] = useState(null);
 
     const textField = useRef(null);
     const displayRef = useRef(null);
@@ -43,6 +43,10 @@ function App() {
                     targetLanguage: chosenLanguage,
                 });
                 setTranslator(translatorInstance);
+
+                const summarizerInstance = await self.ai.summarizer.create();
+                setSummarizer(summarizerInstance);
+
             } catch (error) {
                 console.error("Error initializing AI:", error);
                 setErrorMessage(error.message);
@@ -74,8 +78,12 @@ function App() {
     };
 
     const summarizeText = async (text) => {
+        if (!summarizer) {
+            setErrorMessage("Summarizer not initialized.");
+            return text;
+        }
         try {
-            const result = await self.ai.summarizer.summarize(text);
+            const result = await summarizer.summarize(text);
             return result ? result.summary : text;
         } catch (error) {
             console.error("Error summarizing text:", error);
@@ -163,7 +171,7 @@ function App() {
             let newTranslator;
 
             try {
-                 newTranslator = await self.ai.translator.create({
+                newTranslator = await self.ai.translator.create({
                     sourceLanguage: detectedLanguageCode,
                     targetLanguage: chosenLanguage,
                 });
@@ -172,7 +180,8 @@ function App() {
                 setErrorMessage("The translation from the detected language to the chosen language is not possible");
                 return;
             }
-           
+
+
             setTranslator(newTranslator);
             const translatedText = await newTranslator.translate(conversationsCopy[index].text);
 
@@ -256,3 +265,4 @@ function App() {
 }
 
 export default App;
+
